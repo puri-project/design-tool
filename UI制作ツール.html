@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>UI制作ツール</title>
+  </head>
+  <body>
+    <div id="workspace"></div>
+    <div id="menu">
+      <div class="option" name="path">Path</div>
+      <div class="option" name="text">Text</div>
+      <div class="option" name="button">Button</div>
+      <div class="option" name="image">Image</div>
+    </div>
+    <style>
+      #workspace {
+        background-color: blue;
+
+        height: 100%;
+        width: 100%;
+        transform: translate(-50%, -50%);
+
+
+        position: fixed;
+        top: 50%;
+        left: 50%;
+      }
+
+      .parts {
+        position: fixed;
+        top: 0;
+        left: 0;
+      }
+
+      #menu {
+        background-color: #ddd;
+        outline: none;
+        display: none;
+        overflow-x: hidden;
+        overflow-y: scroll;
+        scrollbar-width: none;
+
+        height: 7.5em;
+        width: 10em;
+        border-radius: 1em;
+        text-indent: 0.5em;
+
+        position: fixed;
+        top: 0;
+        left: 0;
+      }
+      #menu::-webkit-scrollbar {
+        display:none;
+      }
+
+      .option {
+        cursor: pointer;
+        user-select: none;
+
+        font-size: 2em;
+      }
+      .option:hover {
+        color: #fff;
+        background-color: #99d;
+      }
+    </style>
+    <script>
+      var workspace = document.getElementById('workspace'),
+          list = [],
+          elements = [],
+          drawingSize,
+          startTime = Date.now(),
+          menu = document.getElementById('menu'),
+          options = document.getElementsByClassName('option'),
+          isHoveringWrokspace = false,
+          isPixelAbsolute = false,
+          isVertical;
+
+      if(location.href.indexOf('?') != -1) {
+        isPixelAbsolute = true;
+        drawingSize = location.href.split('?')[1].split('x');
+      }
+
+      function resizeAll() {
+        if(drawingSize[0] / window.innerHeight == drawingSize[1] / window.innerWidth) {
+          workspace.style.height = "100%";
+          workspace.style.width = "100%";
+        }else {
+          if(drawingSize[0] / window.innerHeight > drawingSize[1] / window.innerWidth) {
+            isVertical = true;
+            workspace.style.height = "100%";
+            workspace.style.width = `${drawingSize[1] * (window.innerHeight / drawingSize[0])}px`;
+          }
+          else {
+            isVertical = false;
+            workspace.style.height = `${drawingSize[0] * (window.innerWidth / drawingSize[1])}px`;
+            workspace.style.width = "100%";
+          }
+        }
+      }
+
+      window.addEventListener('resize', () => {
+        resizeAll();
+      });
+
+      workspace.addEventListener('mouseover', () => {
+        isHoveringWrokspace = true;
+      });
+
+      workspace.addEventListener('mouseleave', () => {
+        isHoveringWrokspace = false;
+      });
+
+      function elapsedTime() {
+        return Date.now() - startTime;
+      }
+
+      function addElement(input, positionX, positionY) {
+        const addTime = elapsedTime();
+        switch(input) {//まだ終わってない
+          case 'Path': { 
+            list.push(addTime, 'path', {height: NaN, width: NaN}, {x: NaN, y: NaN});
+            elements[addTime] = document.createElement('div');
+            elements[addTime].setAttribute('class', 'parts');
+            elements[addTime].style.backgroundColor = "#f00";
+            elements[addTime].style.height = "5%";//ゆくゆくはピクセル指定が絶対値のときにはピクセルで設定して、相対値のときはパーセントで指定して座標の基準を右か左か、上か下かを指定できる
+            elements[addTime].style.width = "5%";//韓国語ちゃんとやって！！
+            if(isPixelAbsolute)
+              elements[addTime].style.transform = `translate(${positionX - (window.innerWidth - workspace.style.width.replace('px', '')) * isVertical / 2}px, ${positionY - ((window.innerHeight - workspace.style.height.replace('px', '')) * isVertical == false) / 2}px)`;
+            else
+              elements[addTime].style.transform = `translate(${positionX}px, ${positionY}px)`;
+            workspace.appendChild(elements[addTime]);
+            break;
+          }
+
+          case 'Text': {
+            list.push(addTime, 'text', {height: NaN, width: NaN}, {x: NaN, y: NaN});
+            elements[addTime] = document.createElement('input');
+            elements[addTime].setAttribute('class', 'parts');
+            elements[addTime].value = "Text";
+            elements[addTime].style.transform = `translate(${positionX}px, ${positionY}px)`;
+            workspace.appendChild(elements[addTime]);
+            break;
+          }
+
+          case 'Button': {
+            list.push(addTime, 'button', {height: NaN, width: NaN}, {x: NaN, y: NaN});
+            elements[addTime] = document.createElement('div');
+            elements[addTime].innerHTML = `<input value="Button">`;
+            elements[addTime].style.transform = `translate(${positionX}px, ${positionY}px)`;
+            workspace.appendChild(elements[addTime]);
+            break;
+          }
+
+          case 'Image': {
+            list.push(addTime, 'image', {height: 0, width: 0}, {x: 0, y: 0});
+            elements[addTime] = document.createElement('img');
+            elements[addTime].style.transform = `translate(${positionX}px, ${positionY}px)`;
+            workspace.appendChild(elements[addTime]);
+            break;
+          }
+        }
+      }
+
+      function showMenu(event1) {
+        menu.style.transform = `translate(${event1.clientX}px, ${event1.clientY}px)`;
+        menu.scrollTop = 0;
+        menu.style.display = "block";
+
+        var hasClicked = false;
+        document.addEventListener('click', (event2) => {
+          if(!hasClicked) {
+            hasClicked = true;
+            menu.style.display = "none";
+            addElement(event2.target.innerText, event1.clientX, event1.clientY);//なぜかname属性が取得できない
+          }
+        });
+      }
+
+      document.oncontextmenu = () => {return false;};
+      document.addEventListener('contextmenu', (event) => {
+        if(isHoveringWrokspace){//全体にホバーしてたら
+          showMenu(event);
+        }
+      });
+
+      if(isPixelAbsolute)
+        resizeAll();
+    </script>
+  </body>
+</html>
